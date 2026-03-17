@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Album de Imagenes por Jordi-bit</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet MarkerCluster -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+    <!-- MapLibre GL JS (for 3D) -->
+    <link href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" rel="stylesheet" />
+    
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="dark-mode">
+    <header class="app-header">
+        <h1>Album de Cromos de J&C</h1>
+        <div class="header-search-container">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="town-search" placeholder="Busca una imagen...">
+                <div id="search-results" class="search-results hidden"></div>
+            </div>
+            <button id="add-town-btn" class="btn-icon" title="Añadir nueva imagen">
+                <i class="fas fa-plus"></i>
+            </button>
+            <button id="theme-toggle" class="btn-icon">
+                <i class="fas fa-sun"></i>
+            </button>
+            <button id="toggle-geo" class="btn-geo" title="Vista Geopolítica">
+                <i class="fas fa-globe-europe"></i> <span>Geo</span>
+            </button>
+            <button id="toggle-roads" class="btn-roads" title="Mostrar/Ocultar Carreteras">
+                <i class="fas fa-route"></i> <span>Vías</span>
+            </button>
+            <button id="toggle-rivers" class="btn-rivers" title="Mostrar/Ocultar Ríos y Lagos">
+                <i class="fas fa-water"></i> <span>Ríos</span>
+            </button>
+            <button id="toggle-markers" class="btn-markers" title="Mostrar/Ocultar Punteros">
+                <i class="fas fa-map-marker-alt"></i> <span>Punteros</span>
+            </button>
+            <button id="toggle-3d" class="btn-3d" title="Cambiar entre Vista 2D y 3D">
+                <span id="btn-2d-label" class="btn-dimension active">2D</span>
+                <span id="btn-3d-label" class="btn-dimension">3D</span>
+            </button>
+        </div>
+    </header>
+    <div id="app">
+
+    <!-- Sidebars -->
+    <div id="add-town-sidebar" class="form-sidebar">
+        <div class="sidebar-header">
+            <h2 id="form-title">Añadir nueva imagen</h2>
+            <button id="close-form-btn" class="btn-sidebar-action close"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="sidebar-content">
+            <form id="add-town-form">
+                <div class="form-group">
+                    <label>Nombre:</label>
+                    <input type="text" id="new-town-name" placeholder="Nombre de la imagen (opcional)">
+                </div>
+                <div class="form-group">
+                    <label>Población:</label>
+                    <input type="text" id="new-town-province" placeholder="Ej: Barcelona, Girona, etc. (opcional)">
+                </div>
+                <div class="form-group">
+                    <label>Latitud:</label>
+                    <input type="number" id="new-town-lat" step="any" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Longitud:</label>
+                    <input type="number" id="new-town-lng" step="any" readonly>
+                </div>
+                <div class="form-group">
+                    <label>Descripción:</label>
+                    <textarea id="new-town-desc" rows="4" placeholder="Breve descripción..."></textarea>
+                </div>
+                <button type="submit" class="btn-submit">Guardar datos de la Imagen</button>
+            </form>
+        </div>
+    </div>
+
+        <aside id="info-sidebar" class="sidebar">
+            <div class="sidebar-content">
+                <div class="sidebar-header-main">
+                    <h2 id="town-name">Nombre de Imagen a buscar...</h2>
+                    <div class="sidebar-actions">
+                        <button id="edit-town-btn" class="btn-sidebar-action secondary" title="Editar imagen">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button id="delete-town-btn" class="btn-sidebar-action danger" title="Eliminar imagen del mapa">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                        <button id="close-sidebar" class="btn-sidebar-action close" title="Cerrar detalles">
+                            <i class="fas fa-times"></i> Cerrar
+                        </button>
+                    </div>
+                </div>
+                <p id="town-province" class="province-tag">Barcelona</p>
+                
+                <button id="fav-btn" class="btn-favorite">
+                    <i class="far fa-heart"></i> Favorito
+                </button>
+
+                <p id="town-description">Descripción del lugar...</p>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="images">Fotos</button>
+                    <button class="tab-btn" data-tab="videos">Vídeos</button>
+                </div>
+
+                <div class="tab-content" id="media-gallery">
+                    <!-- Images/Videos will be injected here -->
+                    <div id="gallery-grid" class="gallery-grid"></div>
+                </div>
+
+                <div class="upload-section">
+                    <h3>Subir contenido</h3>
+                    <div class="upload-date-selectors">
+                        <select id="upload-month">
+                            <option value="1">Enero</option>
+                            <option value="2">Febrero</option>
+                            <option value="3">Marzo</option>
+                            <option value="4">Abril</option>
+                            <option value="5">Mayo</option>
+                            <option value="6">Junio</option>
+                            <option value="7">Julio</option>
+                            <option value="8">Agosto</option>
+                            <option value="9">Septiembre</option>
+                            <option value="10">Octubre</option>
+                            <option value="11">Noviembre</option>
+                            <option value="12">Diciembre</option>
+                        </select>
+                        <select id="upload-year">
+                            <!-- Years will be populated by JS -->
+                        </select>
+                    </div>
+                    <div class="upload-buttons">
+                        <label for="upload-image" class="btn-upload">
+                            <i class="fas fa-image"></i> Fotos
+                            <input type="file" id="upload-image" accept="image/*" multiple hidden>
+                        </label>
+                        <label for="upload-video" class="btn-upload">
+                            <i class="fas fa-video"></i> Vídeos
+                            <input type="file" id="upload-video" accept="video/*" multiple hidden>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Map Container -->
+        <div id="map"></div>
+        <div id="map3d" class="hidden"></div>
+
+        <!-- Image Viewer Modal -->
+        <div id="image-modal" class="modal hidden">
+            <span class="modal-close">&times;</span>
+            <button id="prev-btn" class="modal-nav prev"><i class="fas fa-chevron-left"></i></button>
+            <img id="modal-img" src="" alt="Ampliada">
+            <button id="next-btn" class="modal-nav next"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Video Player Modal -->
+        <div id="video-modal" class="modal hidden">
+            <span class="modal-close">&times;</span>
+            <button id="v-prev-btn" class="modal-nav prev"><i class="fas fa-chevron-left"></i></button>
+            <video id="modal-video" controls></video>
+            <button id="v-next-btn" class="modal-nav next"><i class="fas fa-chevron-right"></i></button>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+    
+    <!-- MapLibre GL JS -->
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
+    
+    <script src="app.js"></script>
+</body>
+</html>

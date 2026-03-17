@@ -1,0 +1,128 @@
+[
+  {
+    "name": "Barcelona",
+    "latitude": 41.3851,
+    "longitude": 2.1734,
+    "description": "La capital cosmopolita de Cataluña, conocida por su arte y arquitectura.",
+    "province": "Barcelona"
+  },
+  {
+    "name": "Girona",
+    "latitude": 41.9831,
+    "longitude": 2.8249,
+    "description": "Ciudad con un casco antiguo medieval muy bien conservado.",
+    "province": "Girona"
+  },
+  {
+    "name": "Tarragona",
+    "latitude": 41.1189,
+    "longitude": 1.2445,
+    "description": "Importante ciudad portuaria con ruinas romanas declaradas Patrimonio de la Humanidad.",
+    "province": "Tarragona"
+  },
+  {
+    "name": "Lleida",
+    "latitude": 41.6176,
+    "longitude": 0.6206,
+    "description": "Ciudad interior con una rica historia y la majestuosa Seu Vella.",
+    "province": "Lleida"
+  },
+  {
+    "name": "Cadaqués",
+    "latitude": 42.2887,
+    "longitude": 3.2781,
+    "description": "Pintoresco pueblo pesquero en la Costa Brava, famoso por Dalí.",
+    "province": "Girona"
+  },
+  {
+    "name": "Sitges",
+    "latitude": 41.2333,
+    "longitude": 1.8105,
+    "description": "Famoso por sus playas y el Festival Internacional de Cine.",
+    "province": "Barcelona"
+  },
+  {
+    "name": "Tossa de Mar",
+    "latitude": 41.7203,
+    "longitude": 2.9324,
+    "description": "Ciudad con un recinto amurallado único junto al mar.",
+    "province": "Girona"
+  },
+  {
+    "name": "Besalú",
+    "latitude": 42.1994,
+    "longitude": 2.6978,
+    "description": "Uno de los pueblos medievales más bellos de Cataluña con su puente fortificado.",
+    "province": "Girona"
+  },
+  {
+    "name": "Rupit",
+    "latitude": 42.0247,
+    "longitude": 2.4644,
+    "description": "Encantador pueblo de piedra colgado de un peñasco.",
+    "province": "Barcelona"
+  },
+  {
+    "name": "Camprodon",
+    "latitude": 42.3134,
+    "longitude": 2.3664,
+    "description": "Famoso por su puente medieval y su tradición gastronómica.",
+    "province": "Girona"
+  },
+  {
+    "name": "Begur",
+    "latitude": 41.9536,
+    "longitude": 3.2081,
+    "description": "Castillo medieval y algunas de las mejores calas de la Costa Brava.",
+    "province": "Girona"
+  },
+  {
+    "name": "Pals",
+    "latitude": 41.97,
+    "longitude": 3.1444,
+    "description": "Pueblo gótico-medieval impecablemente restaurado.",
+    "province": "Girona"
+  },
+  {
+    "name": "Peratallada",
+    "latitude": 41.9774,
+    "longitude": 3.0903,
+    "description": "Referente de la arquitectura civil gótica y medieval.",
+    "province": "Girona"
+  },
+  {
+    "name": "Montblanc",
+    "latitude": 41.3762,
+    "longitude": 1.162,
+    "description": "Ciudad amurallada donde, según la leyenda, San Jorge mató al dragón.",
+    "province": "Tarragona"
+  },
+  {
+    "name": "Cardona",
+    "latitude": 41.9137,
+    "longitude": 1.6811,
+    "description": "Famosa por su imponente castillo y la Montaña de Sal.",
+    "province": "Barcelona"
+  },
+  {
+    "name": "Solsona",
+    "latitude": 41.9939,
+    "longitude": 1.5173,
+    "description": "Ciudad con un rico patrimonio barroco y fiestas tradicionales.",
+    "province": "Lleida"
+  },
+  {
+    "name": "La Seu d'Urgell",
+    "latitude": 42.3572,
+    "longitude": 1.4608,
+    "description": "Puerta de entrada a los Pirineos con una catedral románica única.",
+    "province": "Lleida"
+  },
+  {
+    "name": "Vielha",
+    "latitude": 42.7018,
+    "longitude": 0.7946,
+    "description": "Capital de la Val d'Aran rodeada de altas montañas.",
+    "province": "Lleida"
+  }
+]

@@ -1,0 +1,79 @@
+{
+  "name": "tourism-map",
+  "version": "1.0.0",
+  "description": "Interactive map application for tourism tracking with photo and video management",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder -w"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.18.2",
+    "ffmpeg-static": "^5.3.0",
+    "fluent-ffmpeg": "^2.1.3",
+    "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "electron": "^25.3.0",
+    "electron-builder": "^24.4.0"
+  },
+  "build": {
+    "appId": "com.tourismmap.app",
+    "productName": "TourismMap",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "server/**/*",
+      "public/**/*",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "server/database.json",
+        "to": "server/database.json"
+      },
+      {
+        "from": "media",
+        "to": "media"
+      }
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "artifactName": "TourismMap-${version}-${arch}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": null,
+      "uninstallerIcon": null,
+      "installerHeaderIcon": null
+    },
+    "asar": true,
+    "asarUnpack": [
+      "server/**/*",
+      "node_modules/express/**/*",
+      "node_modules/multer/**/*",
+      "node_modules/cors/**/*",
+      "node_modules/ffmpeg-static/**/*",
+      "node_modules/fluent-ffmpeg/**/*"
+    ]
+  },
+  "keywords": [
+    "tourism",
+    "map",
+    "catalonia",
+    "travel",
+    "photos",
+    "videos"
+  ],
+  "author": "",
+  "license": "ISC"
+}
