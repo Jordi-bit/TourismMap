@@ -106,7 +106,8 @@ app.use('/media', express.static(path.join(BASE_PATH, 'media'), {
 }));
 
 // --- JSON Database Setup ---
-const dbPath = path.join(BASE_PATH, 'server', 'database.json');
+// Store database in AppData alongside media for easy transfer
+const dbPath = path.join(UPLOAD_PATH, 'server', 'database.json');
 
 class JsonDatabase {
     constructor(filePath) {
@@ -122,6 +123,7 @@ class JsonDatabase {
     init() {
         const dir = path.dirname(this.filePath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        if (!fs.existsSync(UPLOAD_PATH)) fs.mkdirSync(UPLOAD_PATH, { recursive: true });
 
         if (fs.existsSync(this.filePath)) {
             try {
@@ -141,7 +143,7 @@ class JsonDatabase {
     }
 
     seedTowns() {
-        const townsPath = path.join(__dirname, '../data/towns.json');
+        const townsPath = path.join(BASE_PATH, 'data', 'towns.json');
         if (fs.existsSync(townsPath)) {
             const townsData = JSON.parse(fs.readFileSync(townsPath, 'utf8'));
             this.data.towns = townsData;
@@ -556,6 +558,21 @@ app.put('/api/media/:id/location', (req, res) => {
 
     db.data.media[index].latitude = latitude;
     db.data.media[index].longitude = longitude;
+    db.save();
+    res.json(db.data.media[index]);
+});
+
+// PUT /api/media/:id (update month/year)
+app.put('/api/media/:id', (req, res) => {
+    const id = parseInt(req.params.id);
+    const { month, year } = req.body;
+
+    const index = db.data.media.findIndex(m => m.id === id);
+    if (index === -1) return res.status(404).json({ error: 'Media not found' });
+
+    if (month !== undefined) db.data.media[index].month = parseInt(month);
+    if (year !== undefined) db.data.media[index].year = parseInt(year);
+    
     db.save();
     res.json(db.data.media[index]);
 });

@@ -10,7 +10,7 @@ Aplicación de escritorio interactiva para organizar y visualizar tus fotos y v�
 - **Sistema de favoritos**: Guarda tus ubicaciones preferidas
 - **Barra lateral informativa**: Información detallada de cada ubicación
 - **Búsqueda**: Encuentra ubicaciones por nombre o provincia
-- **Modo oscuro/claro**: Alterna entre temas
+- **Modo oscuro**: Interfaz en modo oscuro para mayor comodidad
 
 ## Requisitos
 
@@ -70,6 +70,37 @@ tourism-map/
 3. **Ver medios**: Expande los años y meses en la galería para ver tu contenido
 4. **Ver en mapa**: Usa el botón de previsualización para ver los medios en el mapa
 5. **Eliminar**: Puedes eliminar medios individuales, meses completos o ubicaciones enteras
+6. **Editar fechas**: Usa el botón de edición (lápiz) para cambiar el año de un grupo o el mes y año de un mes concreto
+7. **Modo 2D/3D**: Cambia entre vistas 2D y 3D. Los botones de capas (Geo, Vías, Ríos) solo están disponibles en modo 2D
+
+## Capas del mapa
+
+- **Vista 2D**: Disponible con satélite y etiquetas. Soporta capas de límites geopolíticos, carreteras y ríos/lagos
+- **Vista 3D**: Terreno con relieve. Las capas Geo, Vías y Ríos se deshabilitan automáticamente
+
+## Almacenamiento de datos
+
+Los datos se guardan en la carpeta de datos locales de usuario:
+
+```
+%LOCALAPPDATA%\TourismMap\
+├── server/
+│   └── database.json    # Base de datos con ubicaciones y referencias a medios
+├── images/
+│   └── [municipio]/     # Imágenes organizadas por ubicación
+└── videos/
+    └── [municipio]/     # Vídeos organizados por ubicación
+```
+
+### Transferir datos a otro PC
+
+Para llevar tus datos a otro ordenador:
+
+1. Copia la carpeta `%LOCALAPPDATA%\TourismMap\` completa
+2. Pégala en la misma ubicación del otro PC
+3. Instala el programa
+
+Todos tus medios, ubicaciones y favoritos se restaurarán automáticamente.
 
 ## Tecnologías
 

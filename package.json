@@ -38,6 +38,10 @@
         "to": "server/database.json"
       },
       {
+        "from": "data/towns.json",
+        "to": "data/towns.json"
+      },
+      {
         "from": "media",
         "to": "media"
       }
@@ -54,7 +58,8 @@
       "allowToChangeInstallationDirectory": true,
       "installerIcon": null,
       "uninstallerIcon": null,
-      "installerHeaderIcon": null
+      "installerHeaderIcon": null,
+      "perMachine": false
     },
     "asar": true,
     "asarUnpack": [

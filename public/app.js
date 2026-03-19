@@ -19,45 +19,31 @@ document.addEventListener('DOMContentLoaded', () => {
     let map3dMarkers = [];
     let roadsLayer2D = null;
     let riversLayer2D = null;
+    let geoLayer2D = null;
 
     function updateMapLayers() {
         if (!map3d) return;
-        const geoLayers = ['country-fills', 'country-borders', 'country-labels'];
-        const baseSatLayers = ['satellite', '3d-buildings'];
+        const buildingLayers = ['3d-buildings'];
         const roadLayers = ['road-casing-major', 'road-casing-minor', 'road-motorway', 'road-major', 'road-names', 'place-labels'];
         const riverLayers = ['water', 'waterway'];
         
-        geoLayers.forEach(l => {
+        buildingLayers.forEach(l => {
             if (map3d.getLayer(l)) {
-                map3d.setLayoutProperty(l, 'visibility', isGeo ? 'visible' : 'none');
-            }
-        });
-        
-        baseSatLayers.forEach(l => {
-            if (map3d.getLayer(l)) {
-                map3d.setLayoutProperty(l, 'visibility', isGeo ? 'none' : 'visible');
+                map3d.setLayoutProperty(l, 'visibility', 'none');
             }
         });
 
         roadLayers.forEach(l => {
             if (map3d.getLayer(l)) {
-                map3d.setLayoutProperty(l, 'visibility', (isRoadsVisible && !isGeo) ? 'visible' : 'none');
+                map3d.setLayoutProperty(l, 'visibility', isRoadsVisible ? 'visible' : 'none');
             }
         });
 
         riverLayers.forEach(l => {
             if (map3d.getLayer(l)) {
-                // Show rivers in both geo mode and normal mode when enabled
-                map3d.setLayoutProperty(l, 'visibility', isRiversVisible ? 'visible' : 'none');
+                map3d.setPaintProperty(l, 'visibility', isRiversVisible ? 'visible' : 'none');
             }
         });
-
-        // Set ocean background color when in geo mode
-        if (isGeo) {
-            map3d.setPaintProperty('background', 'background-color', '#35659d');
-        } else {
-            map3d.setPaintProperty('background', 'background-color', '#000000');
-        }
     }
 
     // UI Elements
@@ -71,7 +57,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const tabBtns = document.querySelectorAll('.tab-btn');
     const searchInput = document.getElementById('town-search');
     const searchResults = document.getElementById('search-results');
-    const themeToggle = document.getElementById('theme-toggle');
     const imageUpload = document.getElementById('upload-image');
     const videoUpload = document.getElementById('upload-video');
     const imageModal = document.getElementById('image-modal');
@@ -145,6 +130,37 @@ document.addEventListener('DOMContentLoaded', () => {
         
         if (isRoadsVisible) {
             roadsLayer2D.addTo(map);
+        }
+
+        // Geopolitical layer for 2D (lightweight alternative)
+        fetch('https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_admin_0_countries.geojson')
+            .then(response => response.json())
+            .then(geojson => {
+                geoLayer2D = L.geoJSON(geojson, {
+                    style: (feature) => ({
+                        fillColor: getCountryColor(feature.properties.mapcolor7),
+                        fillOpacity: 0.5,
+                        color: '#ffffff',
+                        weight: 1,
+                        opacity: 0.8
+                    }),
+                    onEachFeature: (feature, layer) => {
+                        if (feature.properties.name) {
+                            layer.bindTooltip(feature.properties.name, {
+                                permanent: false,
+                                direction: 'center',
+                                className: 'geo-tooltip'
+                            });
+                        }
+                    }
+                });
+                if (isGeo) geoLayer2D.addTo(map);
+            })
+            .catch(err => console.log('Could not load geopolitical layer:', err));
+
+        function getCountryColor(num) {
+            const colors = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', '#fdb462', '#b3de69'];
+            return colors[(num || 1) - 1] || '#d9d9d9';
         }
 
         // Wait. Wait... Actually, MapLibre GL Leaflet uses L.maplibreGL
@@ -556,6 +572,17 @@ document.addEventListener('DOMContentLoaded', () => {
             btn3dElement.classList.add('active');
             toggle3dBtn.title = 'Cambiar a Vista 2D';
             
+            // Disable geo, roads and rivers buttons in 3D
+            toggleGeoBtn.style.opacity = '0.4';
+            toggleGeoBtn.style.pointerEvents = 'none';
+            toggleRoadsBtn.style.opacity = '0.4';
+            toggleRoadsBtn.style.pointerEvents = 'none';
+            toggleRiversBtn.style.opacity = '0.4';
+            toggleRiversBtn.style.pointerEvents = 'none';
+            
+            // Remove 2D geopolitical layer
+            if (geoLayer2D) geoLayer2D.remove();
+            
             map3d.setCenter([center.lng, center.lat]);
             map3d.setZoom(zoom); 
             map3d.resize();
@@ -578,6 +605,17 @@ document.addEventListener('DOMContentLoaded', () => {
             btn3dElement.classList.remove('active');
             toggle3dBtn.title = 'Cambiar a Vista 3D';
             
+            // Enable geo, roads and rivers buttons in 2D
+            toggleGeoBtn.style.opacity = '1';
+            toggleGeoBtn.style.pointerEvents = 'auto';
+            toggleRoadsBtn.style.opacity = '1';
+            toggleRoadsBtn.style.pointerEvents = 'auto';
+            toggleRiversBtn.style.opacity = '1';
+            toggleRiversBtn.style.pointerEvents = 'auto';
+            
+            // Add 2D geopolitical layer if active
+            if (geoLayer2D && isGeo) geoLayer2D.addTo(map);
+            
             map.setView([center.lat, center.lng], zoom);
             map.invalidateSize();
             renderMarkers();
@@ -585,25 +623,28 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     toggleGeoBtn.addEventListener('click', () => {
-        if (!is3D) {
-            // Trigger 3D switch first
-            toggle3dBtn.click();
-            // isGeo will be toggled below
+        if (is3D) {
+            showMapNotice('Disponible solo en modo 2D');
+            return;
         }
-        
         isGeo = !isGeo;
         toggleGeoBtn.classList.toggle('active', isGeo);
         
-        if (!map3d) return;
-
-        if (map3d.isStyleLoaded()) {
-            updateMapLayers();
-        } else {
-            map3d.once('idle', updateMapLayers);
+        // 2D Map geopolitical layer only
+        if (geoLayer2D) {
+            if (isGeo) {
+                geoLayer2D.addTo(map);
+            } else {
+                geoLayer2D.remove();
+            }
         }
     });
 
     toggleRoadsBtn.addEventListener('click', () => {
+        if (is3D) {
+            showMapNotice('Disponible solo en modo 2D');
+            return;
+        }
         isRoadsVisible = !isRoadsVisible;
         toggleRoadsBtn.classList.toggle('active', isRoadsVisible);
         
@@ -615,18 +656,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 map.removeLayer(roadsLayer2D);
             }
         }
-        
-        // 3D Map
-        if (map3d) {
-            if (map3d.isStyleLoaded()) {
-                updateMapLayers();
-            } else {
-                map3d.once('idle', updateMapLayers);
-            }
-        }
     });
 
     toggleRiversBtn.addEventListener('click', () => {
+        if (is3D) {
+            showMapNotice('Disponible solo en modo 2D');
+            return;
+        }
         isRiversVisible = !isRiversVisible;
         toggleRiversBtn.classList.toggle('active', isRiversVisible);
         
@@ -636,15 +672,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 map.addLayer(riversLayer2D);
             } else {
                 map.removeLayer(riversLayer2D);
-            }
-        }
-        
-        // 3D Map (and Geopolitical)
-        if (map3d) {
-            if (map3d.isStyleLoaded()) {
-                updateMapLayers();
-            } else {
-                map3d.once('idle', updateMapLayers);
             }
         }
     });
@@ -1048,25 +1075,16 @@ document.addEventListener('DOMContentLoaded', () => {
             yearActions.style.display = 'flex';
             yearActions.style.gap = '5px';
             
-            const yearToggleBtn = document.createElement('button');
-            yearToggleBtn.className = 'btn-toggle-year ' + (yearVisibility[year] ? 'active' : '');
-            yearToggleBtn.title = 'Mostrar/Ocultar punteros de este año';
-            yearToggleBtn.innerHTML = '<i class="fas fa-map-marker-alt"></i>';
-            yearToggleBtn.onclick = (e) => {
+            const yearEditBtn = document.createElement('button');
+            yearEditBtn.className = 'btn-edit-year';
+            yearEditBtn.title = 'Editar fecha de este año';
+            yearEditBtn.innerHTML = '<i class="fas fa-edit"></i>';
+            yearEditBtn.onclick = (e) => {
                 e.stopPropagation();
-                yearVisibility[year] = !yearVisibility[year];
-                yearToggleBtn.classList.toggle('active', yearVisibility[year]);
-                
-                const monthSections = yearSection.querySelectorAll('.gallery-month-section');
-                monthSections.forEach(ms => {
-                    const monthKey = ms.dataset.monthKey;
-                    const monthVisible = monthVisibility[monthKey] !== false && yearVisibility[year];
-                    ms.style.display = monthVisible ? '' : 'none';
-                });
-                
-                updateMediaMarkersVisibility();
+                openEditYearModal(yearNum, years[year]);
             };
-            yearActions.appendChild(yearToggleBtn);
+            yearActions.appendChild(yearEditBtn);
+            
             yearHeader.appendChild(yearActions);
             
             yearSection.appendChild(yearHeader);
@@ -1166,6 +1184,16 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateMediaMarkersVisibility();
                 };
                 monthActions.appendChild(monthToggleBtn);
+
+                const monthEditBtn = document.createElement('button');
+                monthEditBtn.className = 'btn-edit-year';
+                monthEditBtn.title = 'Editar fecha';
+                monthEditBtn.innerHTML = '<i class="fas fa-edit"></i>';
+                monthEditBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    openEditDateModal(yearNum, monthsInYear[month]);
+                };
+                monthActions.appendChild(monthEditBtn);
 
                 const monthDeleteBtn = document.createElement('button');
                 monthDeleteBtn.className = 'btn-delete-group';
@@ -1353,13 +1381,6 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.onclick = (e) => {
             if (e.target === modal) closeModal();
         };
-    });
-
-    // --- THEME ---
-
-    themeToggle.addEventListener('click', () => {
-        const isDark = document.body.classList.toggle('dark-mode');
-        themeToggle.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     });
 
     // --- EVENTS ---
@@ -1795,6 +1816,146 @@ document.addEventListener('DOMContentLoaded', () => {
             else previewMarker.classList.remove('highlighted');
         }
     };
+
+    let editYearItems = [];
+
+    function openEditYearModal(year, items) {
+        editYearItems = items;
+        
+        const modal = document.getElementById('edit-year-modal');
+        const info = document.getElementById('edit-year-info');
+        const yearSelect = document.getElementById('edit-year-new');
+        
+        info.innerText = `${items.length} elemento(s) en ${year}`;
+        
+        yearSelect.innerHTML = '';
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= 2000; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            if (y === year) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+        
+        modal.classList.remove('hidden');
+    }
+
+    let mapNoticeTimeout;
+    function showMapNotice(message) {
+        let notice = document.getElementById('map-notice');
+        if (!notice) {
+            notice = document.createElement('div');
+            notice.id = 'map-notice';
+            notice.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,0.8);color:white;padding:10px 20px;border-radius:8px;font-size:0.9rem;z-index:10000;opacity:0;transition:opacity 0.3s;';
+            document.body.appendChild(notice);
+        }
+        notice.innerText = message;
+        notice.style.opacity = '1';
+        clearTimeout(mapNoticeTimeout);
+        mapNoticeTimeout = setTimeout(() => {
+            notice.style.opacity = '0';
+        }, 2500);
+    }
+
+    function openEditDateModal(year, items) {
+        editYearItems = items;
+        
+        const modal = document.getElementById('edit-date-modal');
+        const info = document.getElementById('edit-date-info');
+        const monthSelect = document.getElementById('edit-date-month');
+        const yearSelect = document.getElementById('edit-date-year');
+        
+        const firstItem = items[0];
+        info.innerText = `${items.length} elemento(s) en ${year}`;
+        
+        monthSelect.innerHTML = '';
+        for (let i = 1; i <= 12; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.innerText = months[i];
+            if (firstItem && i === firstItem.month) opt.selected = true;
+            monthSelect.appendChild(opt);
+        }
+        
+        yearSelect.innerHTML = '';
+        const currentYear = new Date().getFullYear();
+        for (let y = currentYear; y >= 2000; y--) {
+            const opt = document.createElement('option');
+            opt.value = y;
+            opt.innerText = y;
+            if (y === year) opt.selected = true;
+            yearSelect.appendChild(opt);
+        }
+        
+        modal.classList.remove('hidden');
+    }
+
+    document.getElementById('save-year-edit').addEventListener('click', async () => {
+        const newYear = parseInt(document.getElementById('edit-year-new').value);
+        
+        try {
+            for (const item of editYearItems) {
+                const res = await fetch(`/api/media/${item.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ year: newYear })
+                });
+                if (!res.ok) throw new Error('Error updating media');
+                item.year = newYear;
+            }
+            
+            document.getElementById('edit-year-modal').classList.add('hidden');
+            loadMedia(currentTown);
+        } catch (err) {
+            console.error('Error saving:', err);
+            alert('Error al guardar los cambios');
+        }
+    });
+
+    document.getElementById('save-date-edit').addEventListener('click', async () => {
+        const newMonth = parseInt(document.getElementById('edit-date-month').value);
+        const newYear = parseInt(document.getElementById('edit-date-year').value);
+        
+        try {
+            for (const item of editYearItems) {
+                const res = await fetch(`/api/media/${item.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ month: newMonth, year: newYear })
+                });
+                if (!res.ok) throw new Error('Error updating media');
+                item.month = newMonth;
+                item.year = newYear;
+            }
+            
+            document.getElementById('edit-date-modal').classList.add('hidden');
+            loadMedia(currentTown);
+        } catch (err) {
+            console.error('Error saving:', err);
+            alert('Error al guardar los cambios');
+        }
+    });
+
+    document.querySelector('.edit-modal-close').addEventListener('click', () => {
+        document.getElementById('edit-year-modal').classList.add('hidden');
+    });
+
+    document.getElementById('edit-year-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-year-modal') {
+            document.getElementById('edit-year-modal').classList.add('hidden');
+        }
+    });
+
+    document.querySelector('.edit-date-modal-close').addEventListener('click', () => {
+        document.getElementById('edit-date-modal').classList.add('hidden');
+    });
+
+    document.getElementById('edit-date-modal').addEventListener('click', (e) => {
+        if (e.target.id === 'edit-date-modal') {
+            document.getElementById('edit-date-modal').classList.add('hidden');
+        }
+    });
 
     setupDateSelectors();
     initMap();

@@ -31,10 +31,7 @@
             <button id="add-town-btn" class="btn-icon" title="Añadir nueva imagen">
                 <i class="fas fa-plus"></i>
             </button>
-            <button id="theme-toggle" class="btn-icon">
-                <i class="fas fa-sun"></i>
-            </button>
-            <button id="toggle-geo" class="btn-geo" title="Vista Geopolítica">
+            <button id="toggle-geo" class="btn-geo" title="Límites países (2D/3D)">
                 <i class="fas fa-globe-europe"></i> <span>Geo</span>
             </button>
             <button id="toggle-roads" class="btn-roads" title="Mostrar/Ocultar Carreteras">
@@ -174,6 +171,38 @@
             <button id="v-prev-btn" class="modal-nav prev"><i class="fas fa-chevron-left"></i></button>
             <video id="modal-video" controls></video>
             <button id="v-next-btn" class="modal-nav next"><i class="fas fa-chevron-right"></i></button>
+        </div>
+
+        <!-- Edit Year Only Modal -->
+        <div id="edit-year-modal" class="modal hidden">
+            <div class="modal-content edit-modal-content">
+                <span class="modal-close edit-modal-close">&times;</span>
+                <h3>Editar año</h3>
+                <p id="edit-year-info"></p>
+                <div class="form-group">
+                    <label for="edit-year-new">Nuevo año:</label>
+                    <select id="edit-year-new"></select>
+                </div>
+                <button id="save-year-edit" class="btn-primary">Guardar</button>
+            </div>
+        </div>
+
+        <!-- Edit Month and Year Modal -->
+        <div id="edit-date-modal" class="modal hidden">
+            <div class="modal-content edit-modal-content">
+                <span class="modal-close edit-date-modal-close">&times;</span>
+                <h3>Editar fecha</h3>
+                <p id="edit-date-info"></p>
+                <div class="form-group">
+                    <label for="edit-date-month">Mes:</label>
+                    <select id="edit-date-month"></select>
+                </div>
+                <div class="form-group">
+                    <label for="edit-date-year">Año:</label>
+                    <select id="edit-date-year"></select>
+                </div>
+                <button id="save-date-edit" class="btn-primary">Guardar</button>
+            </div>
         </div>
     </div>
 
