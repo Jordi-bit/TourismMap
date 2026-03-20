@@ -29,16 +29,16 @@ body.dark-mode {
     top: 0;
     left: 0;
     right: 0;
-    height: 70px; /* Increased from 60px */
+    height: 70px;
     background: var(--bg-dark);
-    backdrop-filter: blur(15px);
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
     justify-content: space-between;
     padding: 0 30px;
-    z-index: 2000; /* Higher z-index to stay on top */
+    z-index: 2000;
     box-shadow: 0 4px 30px rgba(0,0,0,0.3);
+    pointer-events: auto;
 }
 
 .header-search-container {
@@ -220,6 +220,58 @@ body.dark-mode {
     color: #aaa;
 }
 
+.btn-cache {
+    background: #333;
+    border: 1px solid #555;
+    color: #888;
+    padding: 0 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    height: 35px;
+    font-size: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-cache:hover {
+    border-color: #3498db;
+    color: #3498db;
+}
+
+.btn-cache .fa-database {
+    font-size: 0.85rem;
+}
+
+.btn-terrain {
+    background: #333;
+    border: 1px solid #555;
+    color: #888;
+    padding: 0 10px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+    height: 35px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-terrain:hover {
+    border-color: #9b59b6;
+    color: #9b59b6;
+}
+
+.btn-terrain.active {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    color: white;
+    box-shadow: 0 4px 10px rgba(155, 89, 182, 0.3);
+}
+
 .app-header h1 {
     font-size: 1.8rem; /* Slightly larger */
     font-weight: 800;
@@ -268,20 +320,22 @@ body {
 /* Search Bar in Header */
 .search-box {
     position: relative;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
+    background: rgba(50, 50, 50, 0.9);
     border-radius: 30px;
     padding: 8px 15px;
     display: flex;
     align-items: center;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-    border: 1px solid var(--glass-border);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     width: 300px;
+    z-index: 100;
+    pointer-events: auto;
 }
 
 .search-box i {
     color: #888;
     margin-right: 10px;
+    flex-shrink: 0;
 }
 
 .search-box input {
@@ -289,8 +343,28 @@ body {
     background: transparent;
     width: 100%;
     outline: none;
-    font-size: 0.9rem;
     color: white;
+    font-size: 0.9rem;
+    z-index: 101;
+    pointer-events: auto;
+    user-select: text;
+    -webkit-user-select: text;
+    cursor: text;
+}
+
+.search-box input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-box input:focus {
+    background: transparent;
+    outline: none;
+    box-shadow: none;
+}
+
+.search-box:focus-within {
+    border-color: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.1);
 }
 
 .search-results {
@@ -324,7 +398,7 @@ body {
     width: 450px;
     height: calc(100% - var(--header-height));
     background: var(--sidebar-bg-light);
-    backdrop-filter: blur(15px);
+    /* backdrop-filter removed for Electron compatibility */
     z-index: 1001;
     transform: translateX(100%);
     transition: var(--transition);
@@ -340,7 +414,7 @@ body {
     width: 400px;
     height: calc(100% - var(--header-height));
     background: var(--sidebar-bg-dark);
-    backdrop-filter: blur(15px);
+    /* backdrop-filter removed for Electron compatibility */
     z-index: 1001;
     transform: translateX(-100%);
     transition: var(--transition);
@@ -638,7 +712,7 @@ h1 {
 /* Theme Toggle */
 .btn-icon {
     background: var(--sidebar-bg-light);
-    backdrop-filter: blur(10px);
+    /* backdrop-filter removed for Electron compatibility */
     border: 1px solid var(--glass-border);
     border-radius: 50%;
     width: 48px;
@@ -689,7 +763,7 @@ h1 {
     top: 50%;
     transform: translateY(-50%);
     background: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
+    /* backdrop-filter removed for Electron compatibility */
     border: 1px solid rgba(255, 255, 255, 0.2);
     color: white;
     width: 60px;
@@ -738,8 +812,41 @@ body.dark-mode .search-box, body.dark-mode .btn-icon {
     color: var(--text-dark);
 }
 
-body.dark-mode .search-box input {
+body.dark-mode .btn-cache {
+    background: var(--sidebar-bg-dark);
+    color: #888;
+}
+
+body.dark-mode .btn-cache:hover {
+    border-color: #3498db;
+    color: #3498db;
+}
+
+body.dark-mode .btn-terrain {
+    background: var(--sidebar-bg-dark);
+    color: #888;
+}
+
+body.dark-mode .btn-terrain:hover {
+    border-color: #9b59b6;
+    color: #9b59b6;
+}
+
+body.dark-mode .btn-terrain.active {
+    background: linear-gradient(135deg, #9b59b6, #8e44ad);
     color: white;
+}
+
+body.dark-mode .search-box input {
+    color: white !important;
+    pointer-events: auto !important;
+    cursor: text !important;
+    -webkit-appearance: none;
+    -webkit-border-radius: 0;
+}
+
+body.dark-mode .search-box {
+    pointer-events: auto !important;
 }
 
 body.dark-mode .search-box input::placeholder {
@@ -780,7 +887,7 @@ body.dark-mode .edit-modal-content select {
 /* Add Town Modal & Form */
 .modal-content-form {
     background: var(--sidebar-bg-dark);
-    backdrop-filter: blur(20px);
+    /* backdrop-filter removed for Electron compatibility */
     padding: 40px;
     border-radius: 20px;
     width: 90%;
@@ -918,7 +1025,7 @@ body.picking-mode .search-container {
 /* Town Labels */
 .town-label {
     background: rgba(30,30,30,0.8) !important;
-    backdrop-filter: blur(5px);
+    /* backdrop-filter removed for Electron compatibility */
     border: 1px solid rgba(255,255,255,0.2) !important;
     color: white !important;
     padding: 2px 8px !important;

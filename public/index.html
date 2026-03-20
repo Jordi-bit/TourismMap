@@ -28,6 +28,9 @@
                 <input type="text" id="town-search" placeholder="Busca una imagen...">
                 <div id="search-results" class="search-results hidden"></div>
             </div>
+            <button id="cache-info-btn" class="btn-cache" title="Info de caché">
+                <i class="fas fa-database"></i> <span id="cache-size">0 MB</span>
+            </button>
             <button id="add-town-btn" class="btn-icon" title="Añadir nueva imagen">
                 <i class="fas fa-plus"></i>
             </button>
@@ -46,6 +49,9 @@
             <button id="toggle-3d" class="btn-3d" title="Cambiar entre Vista 2D y 3D">
                 <span id="btn-2d-label" class="btn-dimension active">2D</span>
                 <span id="btn-3d-label" class="btn-dimension">3D</span>
+            </button>
+            <button id="toggle-terrain" class="btn-terrain active" title="Activar/Desactivar relieve 3D">
+                <i class="fas fa-mountain"></i>
             </button>
         </div>
     </header>

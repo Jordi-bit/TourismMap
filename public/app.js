@@ -72,6 +72,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const toggleRoadsBtn = document.getElementById('toggle-roads');
     const toggleRiversBtn = document.getElementById('toggle-rivers');
     const toggleMarkersBtn = document.getElementById('toggle-markers');
+    const cacheInfoBtn = document.getElementById('cache-info-btn');
+    const cacheSizeElem = document.getElementById('cache-size');
     const mapContainer2d = document.getElementById('map');
     const mapContainer3d = document.getElementById('map3d');
     
@@ -86,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let mediaToEdit = null;
     let mediaMarkers2d = [];
     let mediaMarkers3d = [];
+    let tileCacheSize = 0;
 
     // --- INITIALIZATION ---
 
@@ -108,24 +111,40 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function initMap() {
         // Center initial: 41.8, 1.5, Zoom: 8
-        map = L.map('map').setView([41.8, 1.5], 8);
+        map = L.map('map', {
+            center: [41.8, 1.5],
+            zoom: 8,
+            zoomControl: true,
+            preferCanvas: true
+        });
 
-        // ESRI World Imagery (Satellite)
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+        // ESRI World Imagery (Satellite) - with cache optimization
+        const satelliteLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            attribution: 'Tiles &copy; Esri',
+            maxZoom: 19,
+            keepBuffer: 2,
+            updateWhenIdle: false,
+            updateWhenZooming: true
         }).addTo(map);
 
         // ESRI Labels Overlay
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+        const labelsLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
             attribution: 'Labels &copy; Esri',
-            pane: 'markerPane', // Ensure labels are above the map but potentially under markers
-            zIndex: 10
+            pane: 'markerPane',
+            zIndex: 10,
+            maxZoom: 19,
+            keepBuffer: 2,
+            updateWhenIdle: false,
+            updateWhenZooming: true
         }).addTo(map);
 
         // ESRI World Transportation (Roads)
         roadsLayer2D = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
             maxZoom: 19,
-            pane: 'overlayPane'
+            pane: 'overlayPane',
+            keepBuffer: 2,
+            updateWhenIdle: false,
+            updateWhenZooming: true
         });
         
         if (isRoadsVisible) {
@@ -246,13 +265,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         type: 'raster',
                         tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
                         tileSize: 256,
-                        attribution: 'Esri Satellite'
+                        attribution: 'Esri Satellite',
+                        maxzoom: 18
                     },
                     'labels': {
                         type: 'raster',
                         tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}'],
                         tileSize: 256,
-                        attribution: 'Esri Labels'
+                        maxzoom: 18
                     },
                     'openmaptiles': {
                         type: 'vector',
@@ -262,7 +282,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         type: 'raster-dem',
                         tiles: ['https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png'],
                         tileSize: 256,
-                        encoding: 'terrarium'
+                        encoding: 'terrarium',
+                        maxzoom: 14
                     },
                     'towns-source': {
                         type: 'geojson',
@@ -270,10 +291,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             type: 'FeatureCollection',
                             features: []
                         }
-                    },
-                    'countries': {
-                        type: 'geojson',
-                        data: 'https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_admin_0_countries.geojson'
                     }
                 },
                 layers: [
@@ -290,30 +307,6 @@ document.addEventListener('DOMContentLoaded', () => {
                             'fill-opacity': 0.6
                         }
                     },
-                    {
-                        'id': 'waterway',
-                        'type': 'line',
-                        'source': 'openmaptiles',
-                        'source-layer': 'waterway',
-                        'paint': {
-                            'line-color': '#35659d',
-                            'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 8, 1, 20, 8],
-                            'line-opacity': 0.8
-                        }
-                    },
-                    { 
-                        'id': '3d-buildings',
-                        'source': 'openmaptiles',
-                        'source-layer': 'building',
-                        'type': 'fill-extrusion',
-                        'minzoom': 13,
-                        'paint': {
-                            'fill-extrusion-color': '#e0e0e0',
-                            'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 20],
-                            'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
-                            'fill-extrusion-opacity': 0.8
-                        }
-                    },
                     // Roads - Casing
                     {
                         'id': 'road-casing-major',
@@ -324,7 +317,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'layout': { 'line-cap': 'round', 'line-join': 'round' },
                         'paint': {
                             'line-color': '#e9ac77',
-                            'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 5, 0.4, 12, 2, 20, 22]
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0.4, 12, 2, 20, 10]
                         }
                     },
                     {
@@ -336,7 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'layout': { 'line-cap': 'round', 'line-join': 'round' },
                         'paint': {
                             'line-color': '#cfcdca',
-                            'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 12, 0.5, 20, 15]
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 12, 0.5, 20, 8]
                         }
                     },
                     // Roads - Core
@@ -349,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         'layout': { 'line-cap': 'round', 'line-join': 'round' },
                         'paint': {
                             'line-color': '#fc8',
-                            'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 5, 0, 12, 1.2, 20, 18]
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 5, 0, 12, 1, 20, 8]
                         }
                     },
                     {
@@ -361,141 +354,56 @@ document.addEventListener('DOMContentLoaded', () => {
                         'layout': { 'line-cap': 'round', 'line-join': 'round' },
                         'paint': {
                             'line-color': '#fff',
-                            'line-width': ['interpolate', ['exponential', 1.2], ['zoom'], 6, 0.2, 12, 1, 20, 12]
-                        }
-                    },
-                    // Road Labels
-                    {
-                        'id': 'road-names',
-                        'type': 'symbol',
-                        'source': 'openmaptiles',
-                        'source-layer': 'transportation_name',
-                        'minzoom': 13,
-                        'layout': {
-                            'symbol-placement': 'line',
-                            'text-field': ['coalesce', ['get', 'name:es'], ['get', 'name:en'], ['get', 'name']],
-                            'text-font': ['Noto Sans Regular'],
-                            'text-size': 12,
-                            'text-rotation-alignment': 'map'
-                        },
-                        'paint': {
-                            'text-color': '#444',
-                            'text-halo-color': 'rgba(255, 255, 255, 0.8)',
-                            'text-halo-width': 1
-                        }
-                    },
-                    {
-                        'id': 'place-labels',
-                        'type': 'symbol',
-                        'source': 'openmaptiles',
-                        'source-layer': 'place',
-                        'layout': {
-                            'text-field': ['coalesce', ['get', 'name:es'], ['get', 'name:en'], ['get', 'name']],
-                            'text-font': ['Noto Sans Regular'],
-                            'text-size': [
-                                'interpolate', ['exponential', 1.2], ['zoom'],
-                                4, 11,
-                                7, 13,
-                                11, 18
-                            ],
-                            'text-pitch-alignment': 'viewport',
-                            'text-rotation-alignment': 'map',
-                            'text-variable-anchor': ['center', 'top', 'bottom'],
-                            'text-padding': 10
-                        },
-                        'paint': {
-                            'text-color': '#ffffff',
-                            'text-halo-color': 'rgba(0,0,0,0.8)',
-                            'text-halo-width': 1.5
-                        }
-                    },
-                    {
-                        id: 'town-labels',
-                        type: 'symbol',
-                        source: 'towns-source',
-                        layout: {
-                            'text-field': ['get', 'name'],
-                            'text-font': ['Noto Sans Regular'],
-                            'text-size': 16,
-                            'text-variable-anchor': ['top', 'bottom', 'left', 'right'],
-                            'text-radial-offset': 0.5,
-                            'text-justify': 'auto',
-                            'text-pitch-alignment': 'viewport',
-                            'text-rotation-alignment': 'map'
-                        },
-                        paint: {
-                            'text-color': '#ffffff',
-                            'text-halo-color': 'rgba(0, 0, 0, 0.8)',
-                            'text-halo-width': 2
-                        }
-                    },
-                    // Geopolitical Layers
-                    {
-                        'id': 'country-fills',
-                        'type': 'fill',
-                        'source': 'countries',
-                        'layout': { 'visibility': 'none' },
-                        'paint': {
-                            'fill-color': [
-                                'match',
-                                ['get', 'mapcolor7'],
-                                1, '#8dd3c7',
-                                2, '#ffffb3',
-                                3, '#bebada',
-                                4, '#fb8072',
-                                5, '#80b1d3',
-                                6, '#fdb462',
-                                7, '#b3de69',
-                                '#d9d9d9'
-                            ],
-                            'fill-opacity': 0.7
-                        }
-                    },
-                    {
-                        'id': 'country-borders',
-                        'type': 'line',
-                        'source': 'countries',
-                        'layout': { 'visibility': 'none' },
-                        'paint': {
-                            'line-color': '#ffffff',
-                            'line-width': 1
-                        }
-                    },
-                    {
-                        'id': 'country-labels',
-                        'type': 'symbol',
-                        'source': 'countries',
-                        'layout': {
-                            'visibility': 'none',
-                            'text-field': ['get', 'name'],
-                            'text-font': ['Noto Sans Regular'],
-                            'text-size': 14
-                        },
-                        'paint': {
-                            'text-color': '#333',
-                            'text-halo-color': 'rgba(255,255,255,0.8)',
-                            'text-halo-width': 1
+                            'line-width': ['interpolate', ['linear'], ['zoom'], 6, 0.2, 12, 1, 20, 6]
                         }
                     }
                 ],
-                terrain: { source: 'terrain-source', exaggeration: 2.0 }
+                terrain: { source: 'terrain-source', exaggeration: 1.5 }
             },
             center: [1.5, 41.8],
             zoom: 8,
-            pitch: 60,
+            maxZoom: 18,
+            maxPitch: 75,
+            pitch: 45,
             bearing: -10,
-            antialias: true
+            antialias: false,
+            attributionControl: false,
+            trackResize: true,
+            fadeDuration: 0
         });
 
-        map3d.addControl(new maplibregl.NavigationControl());
+        map3d.addControl(new maplibregl.NavigationControl({ showCompass: false }));
         
         map3d.on('load', () => {
-            // Re-force terrain to ensure it loads
-            map3d.setTerrain({ source: 'terrain-source', exaggeration: 2.0 });
+            // Set terrain with lower exaggeration for better performance
+            map3d.setTerrain({ source: 'terrain-source', exaggeration: 1.5 });
+            
+            // Add 3D buildings layer (can be heavy, disabled by default)
+            if (!map3d.getLayer('3d-buildings')) {
+                map3d.addLayer({
+                    'id': '3d-buildings',
+                    'source': 'openmaptiles',
+                    'source-layer': 'building',
+                    'type': 'fill-extrusion',
+                    'minzoom': 15,
+                    'maxzoom': 18,
+                    'paint': {
+                        'fill-extrusion-color': '#e0e0e0',
+                        'fill-extrusion-height': ['coalesce', ['get', 'render_height'], ['get', 'height'], 15],
+                        'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], ['get', 'min_height'], 0],
+                        'fill-extrusion-opacity': 0.6
+                    }
+                });
+            }
+            
             if (towns.length > 0) update3DMarkers();
             if (currentTown) renderMediaMarkers();
         });
 
+        // Optimize rendering
+        map3d.on('datarequesting', () => {});
+        map3d.on('dataloading', () => {});
+        
         map3d.on('click', (e) => {
             if (isMediaPickingMode && mediaToEdit) {
                 const { lng, lat } = e.lngLat;
@@ -706,6 +614,92 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update media markers visibility
         updateMediaMarkersVisibility();
     });
+
+    // --- TILE CACHE MANAGEMENT ---
+    
+    function formatBytes(bytes) {
+        if (bytes === 0) return '0 B';
+        const k = 1024;
+        const sizes = ['B', 'KB', 'MB', 'GB'];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    }
+
+    function getTileCacheSize() {
+        if (!map) return 0;
+        let totalSize = 0;
+        map.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+                if (layer._tiles) {
+                    Object.values(layer._tiles).forEach(tile => {
+                        if (tile.el && tile.el.src) {
+                            totalSize += tile.el.src.length * 0.75;
+                        }
+                    });
+                }
+            }
+        });
+        return totalSize;
+    }
+
+    function updateCacheDisplay() {
+        const size = getTileCacheSize();
+        tileCacheSize = size;
+        if (cacheSizeElem) {
+            cacheSizeElem.textContent = formatBytes(size);
+        }
+    }
+
+    function clearTileCache() {
+        if (!map) return;
+        map.eachLayer(layer => {
+            if (layer instanceof L.TileLayer) {
+                if (layer._tiles) {
+                    Object.keys(layer._tiles).forEach(key => {
+                        const tile = layer._tiles[key];
+                        if (tile.el && tile.el.parentNode) {
+                            tile.el.parentNode.removeChild(tile.el);
+                        }
+                        delete layer._tiles[key];
+                    });
+                }
+                if (layer._tileContainer) {
+                    layer._tileContainer.innerHTML = '';
+                }
+            }
+        });
+        updateCacheDisplay();
+        showMapNotice('Caché de tiles limpiada');
+    }
+
+    cacheInfoBtn.addEventListener('click', () => {
+        updateCacheDisplay();
+        if (confirm(`Memoria de caché: ${formatBytes(tileCacheSize)}\n\n¿Deseas limpiar la caché de tiles?`)) {
+            clearTileCache();
+        }
+    });
+
+    // --- 3D TERRAIN TOGGLE ---
+    let isTerrainEnabled = true;
+    const terrainBtn = document.getElementById('toggle-terrain');
+
+    terrainBtn.addEventListener('click', () => {
+        if (!map3d) return;
+        
+        isTerrainEnabled = !isTerrainEnabled;
+        terrainBtn.classList.toggle('active', isTerrainEnabled);
+        
+        if (isTerrainEnabled) {
+            map3d.setTerrain({ source: 'terrain-source', exaggeration: 1.5 });
+            showMapNotice('Relieve 3D activado');
+        } else {
+            map3d.setTerrain(null);
+            showMapNotice('Relieve 3D desactivado (más fluido)');
+        }
+    });
+
+    // Update cache display periodically
+    setInterval(updateCacheDisplay, 5000);
 
     // --- API CALLS ---
 
@@ -2034,6 +2028,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setupDateSelectors();
     initMap();
+    updateCacheDisplay();
     
     // Initialize 2D/3D button state (2D active by default)
     if (btn2d) btn2d.classList.add('active');

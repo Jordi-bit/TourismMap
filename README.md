@@ -13,6 +13,7 @@ Aplicación de escritorio interactiva para organizar y visualizar tus fotos y v�
 - **Búsqueda**: Encuentra ubicaciones por nombre o provincia
 - **Modo oscuro**: Interfaz en modo oscuro para mayor comodidad
 - **Previsualización en mapa**: Activa miniaturas de medios directamente en el mapa
+- **Optimización de rendimiento**: Caché de tiles y controles de fluidez para el mapa
 
 ## Requisitos
 
@@ -78,6 +79,7 @@ tourism-map/
 1. **Subir medios**: Selecciona una ubicación y usa los botones de subida para agregar fotos/vídeos
 2. **Organización automática**: Los archivos se organizan por año y mes automáticamente
 3. **Ver galería**: Expande los años y meses en la galería para ver tu contenido
+4. **Eliminar medios**: Elimina archivos individuales, meses completos o años completos (filtrado por tipo)
 
 ### Geolocalización GPS
 
@@ -88,16 +90,10 @@ tourism-map/
 
 ### Eliminación de medios
 
-- **Eliminar archivo individual**: Botón de papelera en cada imagen/vídeo
+- **Eliminar archivo individual**: Botón de papelera en cada imagen/vídeo (incluye thumbnail para vídeos)
 - **Eliminar mes completo**: Elimina todas las fotos o vídeos de un mes específico
 - **Eliminar año completo**: Elimina todas las fotos o vídeos de un año específico
 - **Eliminar ubicación**: Borra la ubicación y todos sus medios asociados
-
-### Previsualización en mapa
-
-- **Miniaturas de vídeo**: Los vídeos muestran fotogramas de previsualización
-- **Activar/desactivar**: Los botones de previsualización están activos por defecto
-- **Ver en mapa**: Muestra miniaturas de los medios en el mapa
 
 ### Edición de fechas
 
@@ -106,10 +102,24 @@ tourism-map/
 
 ### Vistas del mapa
 
-- **Vista 2D**: Available con satélite y etiquetas
-- **Vista 3D**: Terreno con relieve
-- **Capas**: Geo (límites geopolíticos), Vías (carreteras), Ríos (ríos y lagos)
+- **Vista 2D**: Vista aérea con satélite, etiquetas y transporte
+- **Vista 3D**: Vista con relieve y terreno
+- **Capas 2D**: Geo (límites geopolíticos), Vías (carreteras), Ríos (ríos y lagos)
+- **Relieve 3D**: Activa/desactiva el relieve con el botón de montaña
 - **Punteros**: Activa/desactiva los marcadores de medios en el mapa
+
+### Optimización de rendimiento
+
+- **Caché de tiles**: Los tiles del mapa se guardan en caché para mejorar la fluidez
+- **Indicador de caché**: Botón de base de datos muestra la memoria de caché utilizada
+- **Limpiar caché**: Permite liberar memoria limpiando los tiles en caché
+- **Modo 3D optimizado**: El relieve y las capas 3D se pueden desactivar para mayor fluidez
+
+### Previsualización en mapa
+
+- **Miniaturas de vídeo**: Los vídeos muestran fotogramas de previsualización
+- **Activar/desactivar**: Los botones de previsualización están activos por defecto
+- **Ver en mapa**: Muestra miniaturas de los medios en el mapa
 
 ## Almacenamiento de datos
 
@@ -140,7 +150,8 @@ Todos tus medios, ubicaciones y favoritos se restaurarán automáticamente.
 
 - **Electron**: Framework de aplicación de escritorio
 - **Express.js**: Servidor backend
-- **Leaflet / MapLibre GL**: Bibliotecas de mapas
+- **Leaflet**: Biblioteca de mapas 2D
+- **MapLibre GL**: Biblioteca de mapas 3D
 - **Multer**: Gestión de subida de archivos
 - **Exifr**: Extracción de metadatos EXIF/GPS
 - **FFmpeg**: Generación de miniaturas de vídeo
