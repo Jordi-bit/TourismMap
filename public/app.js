@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let isGeo = false;
     let isRoadsVisible = false;
     let isRiversVisible = false;
-    let isMarkersVisible = false;
+    let isMarkersVisible = true;
     let map3d = null;
     const months = ["", "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
     let map3dMarkers = [];
@@ -772,18 +772,37 @@ document.addEventListener('DOMContentLoaded', () => {
             renderGallery(media);
             renderMediaMarkers();
             
-            // Restore previews for the current tab only
+            // Restore previews for the current tab only (or activate all by default)
             const currentMediaType = currentTab === 'images' ? 'image' : 'video';
             const activeMonths = previewActiveMonths[currentTab];
-            Object.keys(activeMonths).forEach(monthKey => {
-                const monthItems = media.filter(item => 
-                    item.type === currentMediaType && 
-                    `${item.year}-${item.month}` === monthKey
-                );
-                if (monthItems.length > 0) {
-                    toggleMonthPreview(monthKey, monthItems, true);
-                }
-            });
+            
+            // If no previews are active, activate all by default
+            if (Object.keys(activeMonths).length === 0) {
+                const monthsInMedia = {};
+                media.forEach(item => {
+                    if (item.type === currentMediaType) {
+                        const monthKey = `${item.year}-${item.month}`;
+                        if (!monthsInMedia[monthKey]) {
+                            monthsInMedia[monthKey] = [];
+                        }
+                        monthsInMedia[monthKey].push(item);
+                    }
+                });
+                Object.keys(monthsInMedia).forEach(monthKey => {
+                    previewActiveMonths[currentTab][monthKey] = true;
+                    toggleMonthPreview(monthKey, monthsInMedia[monthKey], true);
+                });
+            } else {
+                Object.keys(activeMonths).forEach(monthKey => {
+                    const monthItems = media.filter(item => 
+                        item.type === currentMediaType && 
+                        `${item.year}-${item.month}` === monthKey
+                    );
+                    if (monthItems.length > 0) {
+                        toggleMonthPreview(monthKey, monthItems, true);
+                    }
+                });
+            }
             
         } catch (error) {
             console.error('Error loading media:', error);
@@ -873,7 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
         
-        e.target.value = ''; // Reset input
+        e.target.value = '';
         loadMedia(currentTown.name);
     });
 
@@ -1085,6 +1104,19 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             yearActions.appendChild(yearEditBtn);
             
+            const mediaTypeForDelete = currentTab === 'images' ? 'images' : 'videos';
+            const yearDeleteBtn = document.createElement('button');
+            yearDeleteBtn.className = 'btn-delete-year';
+            yearDeleteBtn.title = `Eliminar todas las ${mediaTypeForDelete === 'images' ? 'fotos' : 'vídeos'} del año`;
+            yearDeleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+            yearDeleteBtn.onclick = (e) => {
+                e.stopPropagation();
+                if (confirm(`¿Eliminar todas las ${mediaTypeForDelete === 'images' ? 'fotos' : 'vídeos'} del año ${yearNum}?`)) {
+                    deleteMediaByYear(currentTown.name, yearNum, mediaTypeForDelete);
+                }
+            };
+            yearActions.appendChild(yearDeleteBtn);
+            
             yearHeader.appendChild(yearActions);
             
             yearSection.appendChild(yearHeader);
@@ -1162,7 +1194,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 monthActions.style.gap = '5px';
                 
                 const mediaType = currentTab === 'images' ? 'images' : 'videos';
-                const isPreviewActive = previewActiveMonths[mediaType][monthKey] || false;
+                // If no state exists, default to active
+                if (previewActiveMonths[mediaType][monthKey] === undefined) {
+                    previewActiveMonths[mediaType][monthKey] = true;
+                }
+                const isPreviewActive = previewActiveMonths[mediaType][monthKey];
                 
                 const monthToggleBtn = document.createElement('button');
                 monthToggleBtn.className = 'btn-toggle-markers ' + (isPreviewActive ? 'active' : '');
@@ -1223,7 +1259,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     delete previewActiveMonths[mediaType][monthKeyToDelete];
                     
                     try {
-                        const response = await fetch(`/api/media/town/${encodeURIComponent(currentTown.name)}/year/${year}/month/${monthNum}`, {
+                        const response = await fetch(`/api/media/town/${encodeURIComponent(currentTown.name)}/year/${year}/month/${monthNum}/type/${mediaType}`, {
                             method: 'DELETE'
                         });
                         if (response.ok) {
@@ -1258,8 +1294,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     
                     let htmlInner = `
                         <button class="btn-delete" title="Eliminar archivo" onclick="deleteMedia(${item.id})"><i class="fas fa-trash"></i></button>
-                        <button class="btn-location ${isMediaPickingMode && mediaToEdit?.id === item.id ? 'active' : ''}" title="Editar ubicación" onclick="editMediaLocation(${item.id}, event)"><i class="fas fa-map-marker-alt"></i></button>
                     `;
+                    
+                    if (item.type === 'image' && !item.latitude) {
+                        htmlInner += `<button class="btn-location-gps" title="Extraer ubicación GPS" onclick="extractMediaGPS(${item.id}, event)"><i class="fas fa-satellite"></i></button>`;
+                    }
+                    
+                    htmlInner += `<button class="btn-location ${isMediaPickingMode && mediaToEdit?.id === item.id ? 'active' : ''}" title="Crear ubicación manual" onclick="editMediaLocation(${item.id}, event)"><i class="fas fa-map-marker-alt"></i></button>`;
+                    
                     if (item.latitude && item.longitude) {
                         htmlInner += `<button class="btn-location-delete" title="Borrar ubicación" onclick="deleteMediaLocation(${item.id})"><i class="fas fa-times-circle"></i></button>`;
                     }
@@ -1772,9 +1814,27 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!confirm('¿Seguro que deseas eliminar la ubicación de esta foto/vídeo?')) return;
         try {
             await fetch(`/api/media/${id}/location`, { method: 'DELETE' });
-            loadMedia(currentTown.name); // Reloads media and markers
+            loadMedia(currentTown.name);
         } catch (error) {
             console.error('Error deleting media location:', error);
+        }
+    };
+
+    window.extractMediaGPS = async (id, event) => {
+        if (event) event.stopPropagation();
+        
+        try {
+            const response = await fetch(`/api/analyze/media/${id}`);
+            const result = await response.json();
+
+            if (result.hasGps) {
+                loadMedia(currentTown.name);
+            } else {
+                alert('Esta imagen no contiene datos de geolocalización (EXIF GPS).');
+            }
+        } catch (error) {
+            console.error('Error extracting GPS:', error);
+            alert('Error al extraer los datos GPS de la imagen.');
         }
     };
 
@@ -1839,6 +1899,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         modal.classList.remove('hidden');
+    }
+
+    async function deleteMediaByYear(town, year, type) {
+        try {
+            const response = await fetch(`/api/media/town/${encodeURIComponent(town)}/year/${year}/type/${type}`, {
+                method: 'DELETE'
+            });
+            if (response.ok) {
+                loadMedia(town);
+            } else {
+                alert('Error al eliminar el contenido del año.');
+            }
+        } catch (err) {
+            console.error('Error deleting year media:', err);
+        }
     }
 
     let mapNoticeTimeout;

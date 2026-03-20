@@ -5,6 +5,7 @@ const multer = require('multer');
 const cors = require('cors');
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegStatic = require('ffmpeg-static');
+const exifr = require('exifr');
 
 // Set ffmpeg path
 try {
@@ -124,6 +125,8 @@ class JsonDatabase {
         const dir = path.dirname(this.filePath);
         if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
         if (!fs.existsSync(UPLOAD_PATH)) fs.mkdirSync(UPLOAD_PATH, { recursive: true });
+        const tempDir = path.join(UPLOAD_PATH, 'temp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
 
         if (fs.existsSync(this.filePath)) {
             try {
@@ -196,6 +199,18 @@ const storage = multer.diskStorage({
 const upload = multer({ 
     storage,
     limits: { fileSize: 500 * 1024 * 1024 } // 500MB limit
+});
+
+const uploadTemp = multer({ 
+    storage: multer.diskStorage({
+        destination: (req, file, cb) => {
+            cb(null, path.join(UPLOAD_PATH, 'temp'));
+        },
+        filename: (req, file, cb) => {
+            cb(null, `${Date.now()}-${file.originalname}`);
+        }
+    }),
+    limits: { fileSize: 100 * 1024 * 1024 } // 100MB limit
 });
 
 // --- Endpoints ---
@@ -350,6 +365,104 @@ app.get('/api/media/:town', (req, res) => {
     res.json(db.data.media.filter(m => m.town === town));
 });
 
+// POST /api/analyze/image - Analyze image GPS and update media record
+app.post('/api/analyze/image', uploadTemp.single('image'), async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+
+    const { mediaId } = req.body;
+    const result = {
+        filename: req.file.originalname,
+        mediaId: mediaId ? parseInt(mediaId) : null,
+        hasGps: false,
+        latitude: null,
+        longitude: null,
+        error: null
+    };
+
+    try {
+        const gpsData = await exifr.gps(req.file.path);
+        if (gpsData) {
+            result.hasGps = true;
+            result.latitude = gpsData.latitude;
+            result.longitude = gpsData.longitude;
+
+            if (mediaId) {
+                const mediaIndex = db.data.media.findIndex(m => m.id === parseInt(mediaId));
+                if (mediaIndex !== -1) {
+                    db.data.media[mediaIndex].latitude = gpsData.latitude;
+                    db.data.media[mediaIndex].longitude = gpsData.longitude;
+                    db.save();
+                }
+            }
+        }
+    } catch (err) {
+        result.error = err.message;
+    }
+
+    // Clean up temp file
+    try {
+        fs.unlinkSync(req.file.path);
+    } catch (e) {}
+
+    res.json(result);
+});
+
+// GET /api/analyze/media/:id - Analyze existing media file by ID
+app.get('/api/analyze/media/:id', async (req, res) => {
+    const { id } = req.params;
+    const mediaIndex = db.data.media.findIndex(m => m.id === parseInt(id));
+    
+    if (mediaIndex === -1) {
+        return res.status(404).json({ error: 'Media not found' });
+    }
+    
+    const media = db.data.media[mediaIndex];
+    
+    if (media.type !== 'image') {
+        return res.json({ 
+            hasGps: false, 
+            error: 'Solo se pueden analizar imagenes'
+        });
+    }
+    
+    // Find the actual file path
+    let filePath = path.join(UPLOAD_PATH, media.file_path.replace('/media/', ''));
+    
+    // If not in UPLOAD_PATH, try BASE_PATH
+    if (!fs.existsSync(filePath)) {
+        filePath = path.join(BASE_PATH, media.file_path);
+    }
+    
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Archivo de imagen no encontrado' });
+    }
+    
+    const result = {
+        hasGps: false,
+        latitude: null,
+        longitude: null,
+        error: null
+    };
+    
+    try {
+        const gpsData = await exifr.gps(filePath);
+        if (gpsData) {
+            result.hasGps = true;
+            result.latitude = gpsData.latitude;
+            result.longitude = gpsData.longitude;
+            
+            // Update database
+            db.data.media[mediaIndex].latitude = gpsData.latitude;
+            db.data.media[mediaIndex].longitude = gpsData.longitude;
+            db.save();
+        }
+    } catch (err) {
+        result.error = err.message;
+    }
+    
+    res.json(result);
+});
+
 // POST /upload/image
 app.post('/api/upload/image', upload.single('image'), (req, res) => {
     const { town } = req.body;
@@ -481,18 +594,19 @@ app.post('/api/media/:id/generate-thumbnail', (req, res) => {
     res.json({ thumbnail_path: thumbnailUrl, generating: true });
 });
 
-// DELETE /api/media/town/:town/year/:year/month/:month
-app.delete('/api/media/town/:town/year/:year/month/:month', (req, res) => {
-    const { town, year, month } = req.params;
+// DELETE /api/media/town/:town/year/:year/month/:month/type/:type
+app.delete('/api/media/town/:town/year/:year/month/:month/type/:type', (req, res) => {
+    const { town, year, month, type } = req.params;
     const y = parseInt(year);
     const m = parseInt(month);
+    const mediaType = type === 'images' ? 'image' : 'video';
 
     const mediaToDelete = db.data.media.filter(
-        item => item.town === town && Number(item.year) === y && Number(item.month) === m
+        item => item.town === town && Number(item.year) === y && Number(item.month) === m && item.type === mediaType
     );
 
     mediaToDelete.forEach(item => {
-        // Try UPLOAD_PATH first, then BASE_PATH
+        // Delete main file
         const uploadMediaPath = path.join(UPLOAD_PATH, item.file_path.replace('/media/', ''));
         const baseMediaPath = path.join(BASE_PATH, item.file_path);
         
@@ -507,14 +621,86 @@ app.delete('/api/media/town/:town/year/:year/month/:month', (req, res) => {
             }
         } catch (err) {
         }
+
+        // Delete thumbnail if exists
+        if (item.thumbnail_path) {
+            const uploadThumbPath = path.join(UPLOAD_PATH, item.thumbnail_path.replace('/media/', ''));
+            const baseThumbPath = path.join(BASE_PATH, item.thumbnail_path);
+            
+            let thumbFullPath = uploadThumbPath;
+            if (!fs.existsSync(uploadThumbPath) && fs.existsSync(baseThumbPath)) {
+                thumbFullPath = baseThumbPath;
+            }
+            
+            try {
+                if (fs.existsSync(thumbFullPath)) {
+                    fs.unlinkSync(thumbFullPath);
+                }
+            } catch (err) {
+            }
+        }
     });
 
     db.data.media = db.data.media.filter(
-        item => !(item.town === town && Number(item.year) === y && Number(item.month) === m)
+        item => !(item.town === town && Number(item.year) === y && Number(item.month) === m && item.type === mediaType)
     );
     db.save();
 
-    res.json({ message: `Deleted ${mediaToDelete.length} items from ${town} for ${month}/${year}` });
+    res.json({ message: `Deleted ${mediaToDelete.length} ${type} from ${town} for ${month}/${year}` });
+});
+
+// DELETE /api/media/town/:town/year/:year/type/:type
+app.delete('/api/media/town/:town/year/:year/type/:type', (req, res) => {
+    const { town, year, type } = req.params;
+    const y = parseInt(year);
+    const mediaType = type === 'images' ? 'image' : 'video';
+
+    const mediaToDelete = db.data.media.filter(
+        item => item.town === town && Number(item.year) === y && item.type === mediaType
+    );
+
+    mediaToDelete.forEach(item => {
+        // Delete main file
+        const uploadMediaPath = path.join(UPLOAD_PATH, item.file_path.replace('/media/', ''));
+        const baseMediaPath = path.join(BASE_PATH, item.file_path);
+        
+        let fullPath = uploadMediaPath;
+        if (!fs.existsSync(uploadMediaPath) && fs.existsSync(baseMediaPath)) {
+            fullPath = baseMediaPath;
+        }
+        
+        try {
+            if (fs.existsSync(fullPath)) {
+                fs.unlinkSync(fullPath);
+            }
+        } catch (err) {
+        }
+
+        // Delete thumbnail if exists
+        if (item.thumbnail_path) {
+            const uploadThumbPath = path.join(UPLOAD_PATH, item.thumbnail_path.replace('/media/', ''));
+            const baseThumbPath = path.join(BASE_PATH, item.thumbnail_path);
+            
+            let thumbFullPath = uploadThumbPath;
+            if (!fs.existsSync(uploadThumbPath) && fs.existsSync(baseThumbPath)) {
+                thumbFullPath = baseThumbPath;
+            }
+            
+            try {
+                if (fs.existsSync(thumbFullPath)) {
+                    fs.unlinkSync(thumbFullPath);
+                }
+            } catch (err) {
+            }
+        }
+    });
+
+    db.data.media = db.data.media.filter(
+        item => !(item.town === town && Number(item.year) === y && item.type === mediaType)
+    );
+    db.save();
+
+    res.json({ message: `Deleted ${mediaToDelete.length} ${type} from ${town} for year ${year}` });
 });
 
 // DELETE /media/:id
@@ -536,6 +722,24 @@ app.delete('/api/media/:id', (req, res) => {
         try {
             fs.unlinkSync(fullPath);
         } catch (err) {
+        }
+    }
+
+    // Delete thumbnail if exists (for videos)
+    if (mediaItem.thumbnail_path) {
+        const uploadThumbPath = path.join(UPLOAD_PATH, mediaItem.thumbnail_path.replace('/media/', ''));
+        const baseThumbPath = path.join(BASE_PATH, mediaItem.thumbnail_path);
+        
+        let thumbFullPath = uploadThumbPath;
+        if (!fs.existsSync(uploadThumbPath) && fs.existsSync(baseThumbPath)) {
+            thumbFullPath = baseThumbPath;
+        }
+        
+        if (fs.existsSync(thumbFullPath)) {
+            try {
+                fs.unlinkSync(thumbFullPath);
+            } catch (err) {
+            }
         }
     }
 
